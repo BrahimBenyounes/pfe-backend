@@ -23,128 +23,13 @@ pipeline {
             }
         }
 
-        stage('Build All Maven Projects') {
-            steps {
-                script {
-                    def services = [
-                        "discovery-service", "gateway-service", "product-service",
-                        "formation-service", "order-service", "notification-service",
-                        "login-service", "contact-service"
-                    ]
-                    services.each { service ->
-                        dir(service) {
-                            bat 'mvn clean install -DskipTests'
-                        }
-                    }
-                }
-            }
-        }
 
-        stage('SonarQube Analysis') {
-            steps {
-                script {
-                    def services = [
-                        "discovery-service", "gateway-service", "product-service",
-                        "formation-service", "order-service", "notification-service",
-                        "login-service", "contact-service"
-                    ]
-                    services.each { service ->
-                        echo "Analyzing project: ${service}"
-                        def timestamp = new Date().format("yyyyMMdd-HHmmss", TimeZone.getTimeZone('UTC'))
-                        def projectKey = "${service}-${timestamp}"
-                        dir(service) {
-                            bat 'mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent install -Dmaven.test.failure.ignore=true'
-                            bat "mvn sonar:sonar -Dsonar.token=${env.SONAR_TOKEN} -Dsonar.projectKey=${projectKey} -Dsonar.host.url=${SONAR_HOST_URL}"
-                        }
-                    }
-                }
-            }
-        }
 
-        stage('Upload Artifacts to Nexus') {
-            steps {
-                script {
-                    def version = "1.0-SNAPSHOT"
-                    def projects = [
-                        "discovery-service", "gateway-service", "product-service",
-                        "formation-service", "order-service", "notification-service",
-                        "login-service", "contact-service"
-                    ]
-                    projects.each { projectName ->
-                        dir(projectName) {
-                            nexusArtifactUploader(
-                                nexusVersion: 'nexus3',
-                                protocol: 'http',
-                                nexusUrl: 'localhost:8081',
-                                groupId: 'org.pfe',
-                                version: version,
-                                repository: 'maven-snapshots',
-                                credentialsId: 'nexus-credentials',
-                                artifacts: [
-                                    [
-                                        artifactId: projectName,
-                                        classifier: '',
-                                        file: "target/${projectName}-${version}.jar",
-                                        type: 'jar'
-                                    ]
-                                ]
-                            )
-                        }
-                    }
-                }
-            }
-        }
 
-        stage('Build Docker Images') {
-            steps {
-                script {
-                    def services = [
-                        "discovery-service", "gateway-service", "product-service",
-                        "formation-service", "order-service", "notification-service",
-                        "login-service", "contact-service"
-                    ]
-                    services.each { service ->
-                        dir(service) {
-                            bat "docker build -t ${service}:${DOCKER_IMAGE_VERSION} -t brahim2025/${service}:latest ."
-                        }
-                    }
-                }
-            }
-        }
+       
 
-        stage('Deploy Microservices') {
-            steps {
-                script {
-                    bat "docker compose -f ${DOCKER_COMPOSE_FILE} down"
-                    bat "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
-                }
-            }
-        }
-
-        stage('Push Docker Images to Docker Hub') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
-                        bat "docker login -u %DOCKER_HUB_USERNAME% -p %DOCKER_HUB_PASSWORD%"
-
-                        def services = [
-                            "discovery-service", "gateway-service", "product-service",
-                            "formation-service", "order-service", "notification-service",
-                            "login-service", "contact-service"
-                        ]
-
-                        services.each { service ->
-                            def remoteTag = "brahim2025/${service}:latest"
-                            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                                bat "docker push ${remoteTag}"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        /*
+     
+   
         stage('Deploy to Kubernetes') {
             steps {
                 script {
@@ -158,6 +43,6 @@ pipeline {
                 }
             }
         }
-        */
+     
     }
 }
