@@ -2,9 +2,6 @@ version: '3.8'
 
 services:
 
-
-
-
   ## PostgreSQL Docker Notification
   postgres-notification-service:
     container_name: postgres-notification-service
@@ -20,7 +17,7 @@ services:
       PGDATA: /data/postgres
     restart: always
     networks:
-      - tokkom
+      - app-network
 
   ## MySQL Docker pfe Service
   mysql-pfe-service:
@@ -35,19 +32,11 @@ services:
       MYSQL_DATABASE: pfe_db
     restart: always
     networks:
-      - tokkom
+      - app-network
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
-
- ## MySQL Docker Formation Service
-  
-
-
-  ## MySQL Docker Login Service
-
-  ## MySQL Docker Contact Service
 
   ## MongoDB Docker Product Service
   mongo-product-service:
@@ -59,7 +48,7 @@ services:
       - "27017:27017"
     restart: always
     networks:
-      - tokkom
+      - app-network
 
   ## Eureka Server
   discovery-service:
@@ -74,7 +63,7 @@ services:
               "server.port"  : "8761"
             }'
     networks:
-      - tokkom
+      - app-network
 
   ## Gateway Server
   gateway-service:
@@ -92,7 +81,7 @@ services:
     depends_on:
       - discovery-service
     networks:
-      - tokkom
+      - app-network
 
   ## Contact Service
   contact-service:
@@ -122,7 +111,7 @@ services:
       - gateway-service
       - mysql-pfe-service
     networks:
-      - tokkom
+      - app-network
 
   ## Login Service
   login-service:
@@ -152,7 +141,7 @@ services:
       - gateway-service
       - mysql-pfe-service
     networks:
-      - tokkom
+      - app-network
 
   ## Formation Service
   formation-service:
@@ -182,7 +171,7 @@ services:
       - gateway-service
       - mysql-pfe-service
     networks:
-      - tokkom
+      - app-network
 
   ## Notification Service
   notification-service:
@@ -211,7 +200,7 @@ services:
       - gateway-service
       - postgres-notification-service
     networks:
-      - tokkom
+      - app-network
 
   ## Order Service
   order-service:
@@ -242,7 +231,7 @@ services:
       - gateway-service
       - mysql-pfe-service
     networks:
-      - tokkom
+      - app-network
 
   ## Product Service
   product-service:
@@ -270,10 +259,8 @@ services:
       - gateway-service
       - mongo-product-service
     networks:
-      - tokkom
+      - app-network
 
 networks:
-  tokkom:
+  app-network:
     driver: bridge
-
-
