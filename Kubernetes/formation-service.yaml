@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: formation-service
-          image: brahim2025/formation-service:latest
+          image: brahim20255/formation-service:latest
           env:
             - name: SPRING_APPLICATION_JSON
               value: '{"spring.datasource.url" : "jdbc:mysql://mysql-pfe-service:3306//pfe_db"}'
