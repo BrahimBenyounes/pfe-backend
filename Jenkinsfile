@@ -8,6 +8,8 @@ pipeline {
 
     environment {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml'
+        DOCKER_HUB_USERNAME = 'brahim2025'
+        DOCKER_HUB_PASSWORD = 'Lifeisgoodbrahim@@'
         MAVEN_HOME = tool name: 'M3', type: 'maven'
         JAVA_HOME = tool name: 'jdk17', type: 'jdk'
         PATH = "${MAVEN_HOME}/bin:${JAVA_HOME}/bin:${env.PATH}"
