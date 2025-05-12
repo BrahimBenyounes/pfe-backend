@@ -123,11 +123,11 @@ pipeline {
                 }
             }
         }
-        stage('Push Docker Images to Docker Hub') {
+stage('Push Docker Images to Docker Hub') {
     steps {
         script {
             withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
-                sh "docker login -u ${DOCKER_HUB_USERNAME} -p ${DOCKER_HUB_PASSWORD}"
+                sh "echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin"
                 def services = [
                     "discovery-service", "gateway-service", "product-service",
                     "formation-service", "order-service", "notification-service",
@@ -135,12 +135,15 @@ pipeline {
                 ]
                 services.each { serviceName ->
                     def image = "${DOCKER_HUB_USERNAME}/${serviceName}:latest"
-                    sh "docker push ${image}"
+                    retry(3) {
+                        sh "docker push ${image}"
+                    }
                 }
             }
         }
     }
 }
+
 
         stage('Deploy to Kubernetes') {
             steps {
