@@ -96,8 +96,7 @@ pipeline {
         }
 
 
-
-        stage('Build Docker Images') {
+ stage('Build Docker Images') {
             steps {
                 script {
                     def services = [
@@ -105,11 +104,14 @@ pipeline {
                         "formation-service", "order-service", "notification-service",
                         "login-service", "contact-service"
                     ]
-                    services.each { serviceName ->
-                        dir(serviceName) {
-                           bat "docker build -t ${serviceName}:${DOCKER_IMAGE_VERSION} ."
-                        }
+                    def buildSteps = services.collectEntries { service ->
+                        ["${service}": {
+                            dir(service) {
+                                bat "docker build -t brahim2025/${service}:${BUILD_TAG} -t brahim2025/${service}:latest ."
+                            }
+                        }]
                     }
+                    parallel buildSteps
                 }
             }
         }
@@ -122,8 +124,6 @@ pipeline {
                 }
             }
         }
-
-   
         stage('Push Docker Images to Docker Hub') {
             steps {
                 script {
