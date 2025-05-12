@@ -91,7 +91,9 @@ pipeline {
             }
         }
 
-   stage('Build Docker Images') {
+ stages {
+
+        stage('Build Docker Images') {
             steps {
                 script {
                     def services = [
@@ -99,13 +101,20 @@ pipeline {
                         "formation-service", "order-service", "notification-service",
                         "login-service", "contact-service"
                     ]
-                    services.each { service ->
-                        dir(service) {
-                            bat "docker build -t ${service}:${DOCKER_IMAGE_VERSION} -t brahim2025/${service}:latest ."
-                            bat "docker compose -f ${DOCKER_COMPOSE_FILE} down"
-                            bat "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
+                    services.each { serviceName ->
+                        dir(serviceName) {
+                            sh "docker build -t ${serviceName}:${DOCKER_IMAGE_VERSION} ."
                         }
                     }
+                }
+            }
+        }
+
+        stage('Deploy Microservices') {
+            steps {
+                script {
+                    sh "docker compose -f ${DOCKER_COMPOSE_FILE} down"
+                    sh "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
                 }
             }
         }
