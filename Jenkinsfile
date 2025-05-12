@@ -152,7 +152,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://127.0.0.1:50518']) {
+                        withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://127.0.0.1:53557']) {
                             bat 'kubectl apply -f Kubernetes --validate=false'
                         }
                     } catch (Exception e) {
