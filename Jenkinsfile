@@ -95,7 +95,7 @@ pipeline {
             }
         }
 
-       stage('Build Docker Images') {
+   stage('Build Docker Images') {
             steps {
                 script {
                     def services = [
@@ -103,64 +103,47 @@ pipeline {
                         "formation-service", "order-service", "notification-service",
                         "login-service", "contact-service"
                     ]
-                    def buildSteps = services.collectEntries { service ->
-                        ["${service}": {
-                            dir(service) {
-                                sh "docker build -t ${DOCKER_HUB_USERNAME}/${service}:latest ."
-                            }
-                        }]
-                    }
-                    parallel buildSteps
-                }
-            }
-        }
-
-        stage('Deploy Microservices') {
-            steps {
-                script {
-                    bat "docker compose -f ${DOCKER_COMPOSE_FILE} down"
-                    bat "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
-                }
-            }
-        }
-stage('Push Docker Images to Docker Hub') {
-    steps {
-        script {
-            withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
-                sh """
-                    echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
-                    docker info
-                """
-                def services = [
-                    "discovery-service", "gateway-service", "product-service",
-                    "formation-service", "order-service", "notification-service",
-                    "login-service", "contact-service"
-                ]
-                services.each { serviceName ->
-                    def image = "${DOCKER_HUB_USERNAME}/${serviceName}:latest"
-                    retry(3) {
-                        try {
-                            sh "docker images | grep ${image}" // تحقق من وجود الصورة
-                            sh "docker push ${image}"
-                        } catch (err) {
-                            echo "فشل دفع الصورة ${image}، إعادة المحاولة خلال 10 ثوانٍ..."
-                            sleep time: 10, unit: 'SECONDS'
-                            throw err
+                    services.each { service ->
+                        dir(service) {
+                            bat "docker build -t ${service}:${DOCKER_IMAGE_VERSION} -t brahim2025/${service}:latest ."
+                            bat "docker compose -f ${DOCKER_COMPOSE_FILE} down"
+                            bat "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
                         }
                     }
                 }
             }
         }
-    }
-}
 
+   
+        stage('Push Docker Images to Docker Hub') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
+                        bat "docker login -u %DOCKER_HUB_USERNAME% -p %DOCKER_HUB_PASSWORD%"
+
+                        def services = [
+                            "discovery-service", "gateway-service", "product-service",
+                            "formation-service", "order-service", "notification-service",
+                            "login-service", "contact-service"
+                        ]
+
+                        services.each { service ->
+                            def remoteTag = "brahim2025/${service}:latest"
+                            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                                bat "docker push ${remoteTag}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
 
         stage('Deploy to Kubernetes') {
             steps {
                 script {
                     try {
-                        withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://127.0.0.1:51955']) {
+                        withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://127.0.0.1:52104']) {
                             bat 'kubectl apply -f Kubernetes --validate=false'
                         }
                     } catch (Exception e) {
