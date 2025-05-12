@@ -124,28 +124,36 @@ pipeline {
                 }
             }
         }
-        stage('Push Docker Images to Docker Hub') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
-                        bat "docker login -u %DOCKER_HUB_USERNAME% -p %DOCKER_HUB_PASSWORD%"
+       stage('Push Docker Images to Docker Hub') {
+    steps {
+        script {
+            withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
+                
+                // Docker login sécurisé
+                bat """
+                    echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
+                """
 
-                        def services = [
-                            "discovery-service", "gateway-service", "product-service",
-                            "formation-service", "order-service", "notification-service",
-                            "login-service", "contact-service"
-                        ]
+                def services = [
+                    "discovery-service", "gateway-service", "product-service",
+                    "formation-service", "order-service", "notification-service",
+                    "login-service", "contact-service"
+                ]
 
-                        services.each { service ->
-                            def remoteTag = "brahim20255/${service}:latest"
-                            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                                bat "docker push ${remoteTag}"
-                            }
+                services.each { service ->
+                    def remoteTag = "brahim20255/${service}:latest"
+                    
+                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                        retry(3) {
+                            echo "Pushing ${remoteTag} (attempt)..."
+                            bat "docker push ${remoteTag}"
                         }
                     }
                 }
             }
         }
+    }
+}
 
 
         stage('Deploy to Kubernetes') {
