@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: notification-service
-          image: brahim2025/notification-service:latest
+          image: brahim20255/notification-service:latest
           env:
             - name: SPRING_APPLICATION_JSON
               value: '{"spring.datasource.url" : "jdbc:postgresql://postgres-notification-service:5432/notification_service"}'
