@@ -30,19 +30,7 @@ pipeline {
 
      
    
-      stage('Deploy to Kubernetes') {
-    steps {
-        script {
-            try {
-                withKubeConfig([credentialsId: 'mykubeconfig']) {
-                    bat 'kubectl apply -f Kubernetes'
-                }
-            } catch (Exception e) {
-                error "Kubernetes deployment failed: ${e.getMessage()}"
-            }
-        }
-    }
-}
+   
 
      
     }
