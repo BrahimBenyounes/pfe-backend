@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: discovery-service
-          image: brahim2025/discovery-service:latest 
+          image: brahim20255/discovery-service:latest 
           ports:
             - containerPort: 8761
 ---
