@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: contact-service
-          image: brahim2025/contact-service:latest
+          image: brahim20255/contact-service:latest
           env:
             - name: SPRING_APPLICATION_JSON
               value: '{"spring.datasource.url" : "jdbc:mysql://mysql-pfe-service:3306//pfe_db"}'
