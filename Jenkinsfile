@@ -19,11 +19,7 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Code') {
-            steps {
-                checkout scm
-            }
-        }
+      
 
         stage('Build All Maven Projects') {
             steps {
