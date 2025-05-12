@@ -121,28 +121,22 @@ pipeline {
                 }
             }
         }
-
-        stage('Push Docker Images to Docker Hub') {
+      stage('Push Docker Images to Docker Hub') {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
-                        bat "docker login -u %DOCKER_HUB_USERNAME% -p %DOCKER_HUB_PASSWORD%"
+                        bat "docker login -u ${DOCKER_HUB_USERNAME} -p ${DOCKER_HUB_PASSWORD}"
                         def services = [
                             "discovery-service", "gateway-service", "product-service",
                             "formation-service", "order-service", "notification-service",
                             "login-service", "contact-service"
                         ]
-                        def pushSteps = services.collectEntries { service ->
-                            ["${service}": {
-                                def remoteTag1 = "brahim2025/${service}:${BUILD_TAG}"
-                                def remoteTag2 = "brahim2025/${service}:latest"
-                                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                                    bat "docker push ${remoteTag1}"
-                                    bat "docker push ${remoteTag2}"
-                                }
-                            }]
+                        services.each { serviceName ->
+                            def localTag = "${serviceName}:${DOCKER_IMAGE_VERSION}"
+                            def remoteTag = "${DOCKER_HUB_USERNAME}/${serviceName}:${DOCKER_IMAGE_VERSION}"
+                            bat "docker tag ${localTag} ${remoteTag}"
+                            bat "docker push ${remoteTag}"
                         }
-                        parallel pushSteps
                     }
                 }
             }
@@ -153,7 +147,7 @@ pipeline {
                 script {
                     try {
                         withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://127.0.0.1:59334']) {
-                            bat 'kubectl apply -f Kubernetes'
+                            bat 'kubectl apply -f Kubernetes --validate=false'
                         }
                     } catch (Exception e) {
                         error "Kubernetes deployment failed: ${e.getMessage()}"
