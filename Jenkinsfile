@@ -91,7 +91,7 @@ pipeline {
             }
         }
 
- stages {
+
 
         stage('Build Docker Images') {
             steps {
