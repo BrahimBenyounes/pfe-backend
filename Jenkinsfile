@@ -19,8 +19,12 @@ pipeline {
     }
 
     stages {
+           stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
       
-
         stage('Build All Maven Projects') {
             steps {
                 script {
@@ -103,7 +107,7 @@ pipeline {
                     ]
                     services.each { serviceName ->
                         dir(serviceName) {
-                            sh "docker build -t ${serviceName}:${DOCKER_IMAGE_VERSION} ."
+                           bat "docker build -t ${serviceName}:${DOCKER_IMAGE_VERSION} ."
                         }
                     }
                 }
@@ -113,8 +117,8 @@ pipeline {
         stage('Deploy Microservices') {
             steps {
                 script {
-                    sh "docker compose -f ${DOCKER_COMPOSE_FILE} down"
-                    sh "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
+                    bat "docker compose -f ${DOCKER_COMPOSE_FILE} down"
+                    bat "docker compose -f ${DOCKER_COMPOSE_FILE} up -d"
                 }
             }
         }
