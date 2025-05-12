@@ -127,7 +127,10 @@ stage('Push Docker Images to Docker Hub') {
     steps {
         script {
             withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
-                sh "echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin"
+                sh """
+                    echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
+                    docker info
+                """
                 def services = [
                     "discovery-service", "gateway-service", "product-service",
                     "formation-service", "order-service", "notification-service",
@@ -136,13 +139,21 @@ stage('Push Docker Images to Docker Hub') {
                 services.each { serviceName ->
                     def image = "${DOCKER_HUB_USERNAME}/${serviceName}:latest"
                     retry(3) {
-                        sh "docker push ${image}"
+                        try {
+                            sh "docker images | grep ${image}" // تحقق من وجود الصورة
+                            sh "docker push ${image}"
+                        } catch (err) {
+                            echo "فشل دفع الصورة ${image}، إعادة المحاولة خلال 10 ثوانٍ..."
+                            sleep time: 10, unit: 'SECONDS'
+                            throw err
+                        }
                     }
                 }
             }
         }
     }
 }
+
 
 
         stage('Deploy to Kubernetes') {
