@@ -42,7 +42,12 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
+     
+       
+
+
+
+        stage('Build Docker Images') {
             steps {
                 script {
                     def services = [
@@ -50,60 +55,7 @@ pipeline {
                         "formation-service", "order-service", "notification-service",
                         "login-service", "contact-service"
                     ]
-                    services.each { service ->
-                        echo "Analyzing project: ${service}"
-                        def timestamp = new Date().format("yyyyMMdd-HHmmss", TimeZone.getTimeZone('UTC'))
-                        def projectKey = "${service}-${timestamp}"
-                        dir(service) {
-                            bat 'mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent install -Dmaven.test.failure.ignore=true'
-                            bat "mvn sonar:sonar -Dsonar.token=${env.SONAR_TOKEN} -Dsonar.projectKey=${projectKey} -Dsonar.host.url=${SONAR_HOST_URL}"
-                        }
-                    }
-                }
-            }
-        }
 
-        stage('Upload Artifacts to Nexus') {
-            steps {
-                script {
-                    def version = "1.0-SNAPSHOT"
-                    def projects = [
-                        "discovery-service", "gateway-service", "product-service",
-                        "formation-service", "order-service", "notification-service",
-                        "login-service", "contact-service"
-                    ]
-                    projects.each { projectName ->
-                        dir(projectName) {
-                            nexusArtifactUploader(
-                                nexusVersion: 'nexus3',
-                                protocol: 'http',
-                                nexusUrl: 'localhost:8081',
-                                groupId: 'org.pfe',
-                                version: version,
-                                repository: 'maven-snapshots',
-                                credentialsId: 'nexus-credentials',
-                                artifacts: [[
-                                    artifactId: projectName,
-                                    classifier: '',
-                                    file: "target/${projectName}-${version}.jar",
-                                    type: 'jar'
-                                ]]
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-
- stage('Build Docker Images') {
-            steps {
-                script {
-                    def services = [
-                        "discovery-service", "gateway-service", "product-service",
-                        "formation-service", "order-service", "notification-service",
-                        "login-service", "contact-service"
-                    ]
                     def buildSteps = services.collectEntries { service ->
                         ["${service}": {
                             dir(service) {
@@ -111,6 +63,7 @@ pipeline {
                             }
                         }]
                     }
+
                     parallel buildSteps
                 }
             }
@@ -124,35 +77,40 @@ pipeline {
                 }
             }
         }
-       stage('Push Docker Images to Docker Hub') {
-    steps {
-        script {
-            withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
-                
-                // Docker login sécurisé
-                bat """
-                    echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
-                """
 
-                def services = [
-                    "discovery-service", "gateway-service", "product-service",
-                    "formation-service", "order-service", "notification-service",
-                    "login-service", "contact-service"
-                ]
+        stage('Push Docker Images to Docker Hub') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
 
-                services.each { service ->
-                    def remoteTag = "brahim20255/${service}:latest"
-                    
-                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                        retry(3) {
-                            echo "Pushing ${remoteTag} (attempt)..."
-                            bat "docker push ${remoteTag}"
+                        // Secure Docker login
+                        bat """
+                            echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
+                        """
+
+                        def services = [
+                            "discovery-service", "gateway-service", "product-service",
+                            "formation-service", "order-service", "notification-service",
+                            "login-service", "contact-service"
+                        ]
+
+                        // Sequential Push with retry
+                        for (service in services) {
+                            def remoteTag = "brahim20255/${service}:latest"
+
+                            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                                retry(3) {
+                                    echo "Pushing ${remoteTag} (attempt)..."
+                                    bat "docker push ${remoteTag}"
+                                    sleep 5 // Small delay between pushes
+                                }
+                            }
                         }
                     }
                 }
             }
-        }
-    }
+        
+    
 }
 
 
