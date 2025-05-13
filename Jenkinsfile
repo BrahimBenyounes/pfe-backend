@@ -42,6 +42,59 @@ pipeline {
             }
         }
 
+     stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def services = [
+                        "discovery-service", "gateway-service", "product-service",
+                        "formation-service", "order-service", "notification-service",
+                        "login-service", "contact-service"
+                    ]
+                    services.each { service ->
+                        echo "Analyzing project: ${service}"
+                        def timestamp = new Date().format("yyyyMMdd-HHmmss", TimeZone.getTimeZone('UTC'))
+                        def projectKey = "${service}-${timestamp}"
+                        dir(service) {
+                            bat 'mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent install -Dmaven.test.failure.ignore=true'
+                            bat "mvn sonar:sonar -Dsonar.token=${env.SONAR_TOKEN} -Dsonar.projectKey=${projectKey} -Dsonar.host.url=${SONAR_HOST_URL}"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Upload Artifacts to Nexus') {
+            steps {
+                script {
+                    def version = "1.0-SNAPSHOT"
+                    def projects = [
+                        "discovery-service", "gateway-service", "product-service",
+                        "formation-service", "order-service", "notification-service",
+                        "login-service", "contact-service"
+                    ]
+                    projects.each { projectName ->
+                        dir(projectName) {
+                            nexusArtifactUploader(
+                                nexusVersion: 'nexus3',
+                                protocol: 'http',
+                                nexusUrl: 'localhost:8081',
+                                groupId: 'org.pfe',
+                                version: version,
+                                repository: 'maven-snapshots',
+                                credentialsId: 'nexus-credentials',
+                                artifacts: [[
+                                    artifactId: projectName,
+                                    classifier: '',
+                                    file: "target/${projectName}-${version}.jar",
+                                    type: 'jar'
+                                ]]
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
      
        
 
@@ -118,7 +171,7 @@ pipeline {
             steps {
                 script {
                     try {
-                        withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://127.0.0.1:56717']) {
+                        withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://127.0.0.1:57861']) {
                             bat 'kubectl apply -f Kubernetes --validate=false'
                         }
                     } catch (Exception e) {
