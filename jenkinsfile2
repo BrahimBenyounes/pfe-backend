@@ -8,6 +8,8 @@ pipeline {
 
     environment {
         DOCKER_COMPOSE_FILE = 'docker-compose.yml'
+        DOCKER_HUB_USERNAME = 'brahim20255'
+        DOCKER_HUB_PASSWORD = 'Lifeisgoodbrahim@@'
         MAVEN_HOME = tool name: 'M3', type: 'maven'
         JAVA_HOME = tool name: 'jdk17', type: 'jdk'
         PATH = "${MAVEN_HOME}/bin:${JAVA_HOME}/bin:${env.PATH}"
@@ -17,12 +19,12 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Code') {
+           stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
-
+      
         stage('Build All Maven Projects') {
             steps {
                 script {
@@ -93,7 +95,8 @@ pipeline {
             }
         }
 
-        stage('Build Docker Images') {
+
+ stage('Build Docker Images') {
             steps {
                 script {
                     def services = [
@@ -104,7 +107,7 @@ pipeline {
                     def buildSteps = services.collectEntries { service ->
                         ["${service}": {
                             dir(service) {
-                                bat "docker build -t brahim2025/${service}:${BUILD_TAG} -t brahim2025/${service}:latest ."
+                                bat "docker build -t brahim20255/${service}:${BUILD_TAG} -t brahim20255/${service}:latest ."
                             }
                         }]
                     }
@@ -121,32 +124,43 @@ pipeline {
                 }
             }
         }
-      stage('Push Docker Images to Docker Hub') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
-                        bat "docker login -u ${DOCKER_HUB_USERNAME} -p ${DOCKER_HUB_PASSWORD}"
-                        def services = [
-                            "discovery-service", "gateway-service", "product-service",
-                            "formation-service", "order-service", "notification-service",
-                            "login-service", "contact-service"
-                        ]
-                        services.each { serviceName ->
-                            def localTag = "${serviceName}:${DOCKER_IMAGE_VERSION}"
-                            def remoteTag = "${DOCKER_HUB_USERNAME}/${serviceName}:${DOCKER_IMAGE_VERSION}"
-                            bat "docker tag ${localTag} ${remoteTag}"
+       stage('Push Docker Images to Docker Hub') {
+    steps {
+        script {
+            withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
+                
+                // Docker login sécurisé
+                bat """
+                    echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
+                """
+
+                def services = [
+                    "discovery-service", "gateway-service", "product-service",
+                    "formation-service", "order-service", "notification-service",
+                    "login-service", "contact-service"
+                ]
+
+                services.each { service ->
+                    def remoteTag = "brahim20255/${service}:latest"
+                    
+                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                        retry(3) {
+                            echo "Pushing ${remoteTag} (attempt)..."
                             bat "docker push ${remoteTag}"
                         }
                     }
                 }
             }
         }
+    }
+}
+
 
         stage('Deploy to Kubernetes') {
             steps {
                 script {
                     try {
-                        withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://127.0.0.1:62379']) {
+                        withKubeConfig([credentialsId: 'mykubeconfig', serverUrl: 'https://127.0.0.1:56717']) {
                             bat 'kubectl apply -f Kubernetes --validate=false'
                         }
                     } catch (Exception e) {
